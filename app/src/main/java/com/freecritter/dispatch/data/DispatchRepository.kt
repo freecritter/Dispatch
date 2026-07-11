@@ -20,7 +20,10 @@ import java.util.UUID
  * publish in the outbox. Serialization here produces the PLAINTEXT payload;
  * encryption happens later, at publish time, inside the Nostr layer.
  */
-class DispatchRepository(private val db: DispatchDatabase) {
+class DispatchRepository(
+    private val db: DispatchDatabase,
+    private val onOutboxEnqueued: () -> Unit = {},
+) {
 
     // --- Trips ---
     fun observeTrips() = db.tripDao().observeActive()
@@ -98,7 +101,7 @@ class DispatchRepository(private val db: DispatchDatabase) {
                 payloadJson = payloadJson
             )
         )
-        // TODO: request an expedited OutboxWorker run (WorkManager one-time work)
+        onOutboxEnqueued()
     }
 
     private val json = Json { encodeDefaults = true }

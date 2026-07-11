@@ -7,75 +7,118 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
-import com.freecritter.dispatch.nostr.DeRiskSlice
-import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.freecritter.dispatch.nostr.KeyManager
 
 /**
- * Identity onboarding (spec §7.1). Three paths, privacy-by-default copy.
- * All three are wired to navigation only; actual key work lands with the de-risk slice:
- *  - Create: NostrSignerInternal generates a fresh, never-published keypair
- *  - Import: nsec entry (validated, no clipboard reads encouraged)
- *  - Amber: NIP-55 login intent; tip nudges a dedicated account
+ * Identity onboarding (spec §7.1). Privacy by default: "Create new identity"
+ * generates a fresh, never-published keypair. Import exists for deliberate
+ * key reuse. Amber (NIP-55) ships in an 0.x release.
  */
 @Composable
-fun OnboardingScreen(onIdentityReady: () -> Unit) {
+fun OnboardingScreen(
+    keyManager: KeyManager,
+    onIdentityReady: () -> Unit,
+) {
+    var showImportDialog by remember { mutableStateOf(false) }
+    var errorText by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("Dispatch", style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(8.dp))
         Text(
             "Trips out. Notes back. Encrypted always.",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(48.dp))
 
         Button(
-            onClick = onIdentityReady, // TODO: generate fresh key first (de-risk slice)
-            modifier = Modifier.fillMaxWidth()
+            onClick = {
+                runCatching { keyManager.createNewIdentity() }
+                    .onSuccess { onIdentityReady() }
+                    .onFailure { errorText = it.message ?: "Key generation failed" }
+            },
+            modifier = Modifier.fillMaxWidth(),
         ) { Text("Create new identity") }
+        Text(
+            "Recommended: a fresh key used only by Dispatch keeps your travel data unlinkable to any public identity.",
+            style = MaterialTheme.typography.bodySmall,
+        )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         OutlinedButton(
-            onClick = onIdentityReady, // TODO: nsec import flow
-            modifier = Modifier.fillMaxWidth()
+            onClick = { errorText = ""; showImportDialog = true },
+            modifier = Modifier.fillMaxWidth(),
         ) { Text("Import key (nsec)") }
 
         Spacer(Modifier.height(12.dp))
 
         OutlinedButton(
-            onClick = onIdentityReady, // TODO: NIP-55 Amber login intent
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Login with Amber") }
+            onClick = {},
+            enabled = false,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Login with Amber — coming in 0.2") }
 
-        Spacer(Modifier.height(24.dp))
-        Text(
-            "Tip: for Amber, create a new account just for Dispatch rather than reusing your social identity.",
-            style = MaterialTheme.typography.bodySmall
+        if (errorText.isNotBlank()) {
+            Spacer(Modifier.height(16.dp))
+            Text(errorText, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+
+    if (showImportDialog) {
+        var nsecInput by remember { mutableStateOf("") }
+        var dialogError by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("Import nsec") },
+            text = {
+                Column {
+                    Text(
+                        "Paste or type an nsec. Tip: use a dedicated key for Dispatch, not your main social identity.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = nsecInput,
+                        onValueChange = { nsecInput = it },
+                        label = { Text("nsec1…") },
+                        singleLine = true,
+                    )
+                    if (dialogError.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(dialogError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching { keyManager.importNsec(nsecInput) }
+                        .onSuccess { showImportDialog = false; onIdentityReady() }
+                        .onFailure { dialogError = "Not a valid nsec — check and try again" }
+                }) { Text("Import") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) { Text("Cancel") }
+            },
         )
-        Spacer(Modifier.height(24.dp))
-        val scope = rememberCoroutineScope()
-        var sliceStatus by remember { mutableStateOf("") }
-        OutlinedButton(
-            onClick = { scope.launch { DeRiskSlice.run { msg -> sliceStatus = msg } } },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Run de-risk slice (temp)") }
-        Text(sliceStatus, style = MaterialTheme.typography.bodySmall)
     }
 }

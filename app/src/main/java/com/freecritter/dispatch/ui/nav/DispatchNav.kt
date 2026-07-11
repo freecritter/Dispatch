@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.freecritter.dispatch.data.DispatchRepository
+import com.freecritter.dispatch.nostr.KeyManager
 import com.freecritter.dispatch.ui.onboarding.OnboardingScreen
 import com.freecritter.dispatch.ui.trips.TripDetailScreen
 import com.freecritter.dispatch.ui.trips.TripListScreen
@@ -19,24 +20,31 @@ object Routes {
 }
 
 @Composable
-fun DispatchNav(repository: DispatchRepository) {
+fun DispatchNav(
+    repository: DispatchRepository,
+    keyManager: KeyManager,
+) {
     val nav = rememberNavController()
-    // TODO: start destination becomes TRIPS once an identity exists (Keystore/Amber check).
-    NavHost(navController = nav, startDestination = Routes.ONBOARDING) {
+    val start = if (keyManager.hasIdentity()) Routes.TRIPS else Routes.ONBOARDING
+
+    NavHost(navController = nav, startDestination = start) {
         composable(Routes.ONBOARDING) {
-            OnboardingScreen(onIdentityReady = {
-                nav.navigate(Routes.TRIPS) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
-            })
+            OnboardingScreen(
+                keyManager = keyManager,
+                onIdentityReady = {
+                    nav.navigate(Routes.TRIPS) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
+                },
+            )
         }
         composable(Routes.TRIPS) {
             TripListScreen(
                 repository = repository,
-                onOpenTrip = { id -> nav.navigate(Routes.tripDetail(id)) }
+                onOpenTrip = { id -> nav.navigate(Routes.tripDetail(id)) },
             )
         }
         composable(
             Routes.TRIP_DETAIL,
-            arguments = listOf(navArgument("tripId") { type = NavType.StringType })
+            arguments = listOf(navArgument("tripId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val tripId = backStackEntry.arguments?.getString("tripId") ?: return@composable
             TripDetailScreen(repository = repository, tripId = tripId, onBack = { nav.popBackStack() })

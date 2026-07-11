@@ -15,7 +15,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             DispatchTheme {
                 Surface {
-                    DispatchNav(repository = (application as DispatchApp).repository)
+                    DispatchNav(
+                        repository = (application as DispatchApp).repository,
+                        keyManager = (application as DispatchApp).keyManager,
+                    )
                 }
             }
         }

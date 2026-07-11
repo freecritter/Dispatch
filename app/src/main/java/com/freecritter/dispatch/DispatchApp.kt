@@ -10,5 +10,10 @@ import com.freecritter.dispatch.data.db.DispatchDatabase
  */
 class DispatchApp : Application() {
     val database: DispatchDatabase by lazy { DispatchDatabase.get(this) }
-    val repository: DispatchRepository by lazy { DispatchRepository(database) }
+    val repository: DispatchRepository by lazy {
+        DispatchRepository(database) {
+            com.freecritter.dispatch.nostr.OutboxWorker.requestDrain(this)
+        }
+    }
+    val keyManager by lazy { com.freecritter.dispatch.nostr.KeyManager(this) }
 }
