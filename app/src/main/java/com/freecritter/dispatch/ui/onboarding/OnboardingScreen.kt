@@ -23,6 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freecritter.dispatch.nostr.KeyManager
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.freecritter.dispatch.data.db.DispatchDatabase
+import com.freecritter.dispatch.nostr.RestoreService
+import kotlinx.coroutines.launch
 
 /**
  * Identity onboarding (spec §7.1). Privacy by default: "Create new identity"
@@ -76,7 +81,7 @@ fun OnboardingScreen(
             onClick = {},
             enabled = false,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Login with Amber — coming in 0.2") }
+        ) { Text("Login with Amber — coming soon") }
 
         if (errorText.isNotBlank()) {
             Spacer(Modifier.height(16.dp))
@@ -87,6 +92,9 @@ fun OnboardingScreen(
     if (showImportDialog) {
         var nsecInput by remember { mutableStateOf("") }
         var dialogError by remember { mutableStateOf("") }
+        var restoring by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        val context = LocalContext.current
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
             title = { Text("Import nsec") },
@@ -112,12 +120,20 @@ fun OnboardingScreen(
             confirmButton = {
                 TextButton(onClick = {
                     runCatching { keyManager.importNsec(nsecInput) }
-                        .onSuccess { showImportDialog = false; onIdentityReady() }
+                        .onSuccess {
+                            dialogError = ""
+                            restoring = true
+                            scope.launch {
+                                runCatching {
+                                    RestoreService(DispatchDatabase.get(context), keyManager.signer()).restore()
+                                }
+                                restoring = false
+                                showImportDialog = false
+                                onIdentityReady()
+                            }
+                        }
                         .onFailure { dialogError = "Not a valid nsec — check and try again" }
-                }) { Text("Import") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) { Text("Cancel") }
+                }) { Text(if (restoring) "Restoring…" else "Import") }
             },
         )
     }
