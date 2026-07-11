@@ -1,0 +1,13 @@
+repository: https://github.com/freecritter/dispatch
+description: 'Dispatch is a local-first travel organizer: your data lives in a database on your phone, fully functional offline, and every save is encrypted (NIP-44) and backed up over Nostr under a fresh, never-published key generated at onboarding — travel data unlinkable to any public identity.'
+summary: Local-first travel organizer. Track what's booked, what's not, and which receipts you still need — with NIP-44 encrypted backup over Nostr and privacy-by-default identity.
+website: Track each trip's flights, lodging, tickets and ground transport with booked/not-booked status, receipt tracking for reimbursements, and an at-a-glance readiness dashboard.
+icon: '0.1.0 is the first release: trips, components, readiness, encrypted backup. Coming in 0.x: restore, Amber (NIP-55) login, receipts as photos with zip export, CRM for people you meet, places knowledge base, trip sharing to family and coworkers, calendar integration.'
+supported_nips:
+    - "01"
+    - "19"
+    - "44"
+    - "78"
+metadata_sources:
+    - github
+pubkey: npub15fxsepns3lw6xvqfq7slpzn9g6zxsef4gmte0h2ztck5dmq0gl8qaygd84
