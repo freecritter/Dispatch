@@ -60,6 +60,18 @@ class DispatchRepository(
         enqueueBackup("component", stamped.id, componentPayload(stamped))
     }
 
+    suspend fun setComponentBooked(id: String, booked: Boolean) {
+        db.tripComponentDao().updateBooked(id, booked, now())
+        db.tripComponentDao().getById(id)?.let { enqueueBackup("component", it.id, componentPayload(it)) }
+        onOutboxEnqueued()
+    }
+
+    suspend fun setComponentReceipt(id: String, obtained: Boolean) {
+        db.tripComponentDao().updateReceipt(id, obtained, now())
+        db.tripComponentDao().getById(id)?.let { enqueueBackup("component", it.id, componentPayload(it)) }
+        onOutboxEnqueued()
+    }
+
     // --- CRM ---
     fun observeProspects() = db.prospectDao().observeAll()
 

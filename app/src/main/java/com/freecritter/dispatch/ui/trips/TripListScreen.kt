@@ -21,15 +21,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freecritter.dispatch.data.DispatchRepository
-import com.freecritter.dispatch.data.db.Trip
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripListScreen(
     repository: DispatchRepository,
-    onOpenTrip: (String) -> Unit
+    onOpenTrip: (String) -> Unit,
+    onCreateTrip: () -> Unit
 ) {
     val trips by repository.observeTrips().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -37,19 +36,7 @@ fun TripListScreen(
     Scaffold(
         topBar = { TopAppBar(title = { Text("Trips") }) },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                // Placeholder create; real create/edit form lands in build step 2 polish.
-                scope.launch {
-                    repository.saveTrip(
-                        Trip(
-                            name = "New trip",
-                            city = "",
-                            startDate = LocalDate.now().toString(),
-                            endDate = LocalDate.now().plusDays(2).toString()
-                        )
-                    )
-                }
-            }) { Text("+") }
+            FloatingActionButton(onClick = onCreateTrip) { Text("+") }
         }
     ) { padding ->
         if (trips.isEmpty()) {

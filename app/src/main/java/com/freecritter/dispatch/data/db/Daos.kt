@@ -27,7 +27,7 @@ interface TripDao {
 
 @Dao
 interface TripComponentDao {
-    @Query("SELECT * FROM trip_components WHERE tripId = :tripId ORDER BY startEpochSec ASC")
+    @Query("SELECT * FROM trip_components WHERE tripId = :tripId ORDER BY startEpochSec IS NULL, startEpochSec ASC, id ASC")
     fun observeForTrip(tripId: String): Flow<List<TripComponent>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -35,6 +35,15 @@ interface TripComponentDao {
 
     @Delete
     suspend fun delete(component: TripComponent)
+
+    @Query("SELECT * FROM trip_components WHERE id = :id")
+    suspend fun getById(id: String): TripComponent?
+
+    @Query("UPDATE trip_components SET booked = :booked, updatedAt = :now WHERE id = :id")
+    suspend fun updateBooked(id: String, booked: Boolean, now: Long)
+
+    @Query("UPDATE trip_components SET receiptObtained = :obtained, updatedAt = :now WHERE id = :id")
+    suspend fun updateReceipt(id: String, obtained: Boolean, now: Long)
 }
 
 @Dao

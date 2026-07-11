@@ -29,6 +29,7 @@ import com.freecritter.dispatch.data.DispatchRepository
 import com.freecritter.dispatch.data.db.ComponentType
 import com.freecritter.dispatch.data.db.TripComponent
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
 
 /**
  * Trip dashboard v0: components with booked/receipt toggles + unbooked/missing counts.
@@ -39,7 +40,10 @@ import kotlinx.coroutines.launch
 fun TripDetailScreen(
     repository: DispatchRepository,
     tripId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+    onAddComponent: () -> Unit,
+    onEditComponent: (String) -> Unit,
 ) {
     val trip by repository.observeTrip(tripId).collectAsState(initial = null)
     val components by repository.observeComponents(tripId).collectAsState(initial = emptyList())
@@ -52,17 +56,12 @@ fun TripDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(trip?.name ?: "Trip") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } }
+                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                actions = { TextButton(onClick = onEdit) { Text("Edit") } }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                scope.launch {
-                    repository.saveComponent(
-                        TripComponent(tripId = tripId, type = ComponentType.OTHER, title = "New item")
-                    )
-                }
-            }) { Text("+") }
+            FloatingActionButton(onClick = onAddComponent) { Text("+") }
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -74,17 +73,22 @@ fun TripDetailScreen(
             }
             LazyColumn(Modifier.fillMaxSize()) {
                 items(components, key = { it.id }) { c ->
-                    Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    Card(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .clickable { onEditComponent(c.id) }
+                    ) {
                         Column(Modifier.padding(16.dp)) {
                             Text("${c.type.name} — ${c.title}", style = MaterialTheme.typography.titleSmall)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(checked = c.booked, onCheckedChange = { checked ->
-                                    scope.launch { repository.saveComponent(c.copy(booked = checked)) }
+                                    scope.launch { repository.setComponentBooked(c.id, checked) }
                                 })
                                 Text("Booked")
                                 Spacer(Modifier.width(16.dp))
                                 Checkbox(checked = c.receiptObtained, onCheckedChange = { checked ->
-                                    scope.launch { repository.saveComponent(c.copy(receiptObtained = checked)) }
+                                    scope.launch { repository.setComponentReceipt(c.id, checked) }
                                 })
                                 Text("Receipt")
                             }
