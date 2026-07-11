@@ -27,10 +27,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
 import com.freecritter.dispatch.data.DispatchRepository
+import com.freecritter.dispatch.data.db.DispatchDatabase
 import com.freecritter.dispatch.nostr.KeyManager
 import com.freecritter.dispatch.nostr.OutboxWorker
 import com.freecritter.dispatch.nostr.RelayConfig
+import com.freecritter.dispatch.nostr.RestoreService
+import kotlinx.coroutines.launch
 
 /**
  * Settings & safety (spec §7.13, 0.2 slice): identity visibility, backup status,
@@ -51,6 +55,9 @@ fun SettingsScreen(
     var showNsecWarning by remember { mutableStateOf(false) }
     var revealedNsec by remember { mutableStateOf<String?>(null) }
     var showResetWarning by remember { mutableStateOf(false) }
+    var restoreStatus by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+    val db = remember { DispatchDatabase.get(context) }
 
     val versionName = remember {
         runCatching {
@@ -91,7 +98,7 @@ fun SettingsScreen(
                             Text("Reveal secret key (nsec)")
                         }
                     } else {
-                        Text("Secret key — write it down, then hide it:", style = MaterialTheme.typography.bodySmall)
+                        Text("Secret key — store it somewhere safe, then hide it:", style = MaterialTheme.typography.bodySmall)
                         Text(
                             revealedNsec!!,
                             style = MaterialTheme.typography.bodySmall,
@@ -99,6 +106,23 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.error,
                         )
                         Spacer(Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                                val clip = android.content.ClipData.newPlainText("nsec", revealedNsec)
+                                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                    clip.description.extras = android.os.PersistableBundle().apply {
+                                        putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                    }
+                                }
+                                clipboard.setPrimaryClip(clip)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Copy (paste it somewhere safe, e.g. your password manager)") }
+
+                        Spacer(Modifier.height(8.dp))
+
                         OutlinedButton(onClick = { revealedNsec = null }, modifier = Modifier.fillMaxWidth()) {
                             Text("Hide")
                         }
@@ -128,6 +152,23 @@ fun SettingsScreen(
                         onClick = { OutboxWorker.requestDrain(context) },
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Back up now") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            restoreStatus = "Restoring…"
+                            scope.launch {
+                                restoreStatus = runCatching {
+                                    val r = RestoreService(db, keyManager.signer()).restore()
+                                    "Restored ${r.restored} of ${r.eventsFound} events (${r.skipped} skipped)"
+                                }.getOrElse { "Restore failed: ${it.message}" }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Restore from backup") }
+                    if (restoreStatus.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(restoreStatus, style = MaterialTheme.typography.bodySmall)
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "If backups stall on GrapheneOS, check Settings → Apps → Dispatch → Network permission.",
