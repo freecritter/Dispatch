@@ -22,19 +22,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.freecritter.dispatch.data.DispatchRepository
 import kotlinx.coroutines.launch
+import androidx.compose.material3.TextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripListScreen(
     repository: DispatchRepository,
     onOpenTrip: (String) -> Unit,
-    onCreateTrip: () -> Unit
+    onCreateTrip: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val trips by repository.observeTrips().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Trips") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Trips") },
+                actions = { TextButton(onClick = onOpenSettings) { Text("⚙") } }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateTrip) { Text("+") }
         }

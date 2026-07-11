@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.freecritter.dispatch.data.DispatchRepository
 import com.freecritter.dispatch.nostr.KeyManager
 import com.freecritter.dispatch.ui.onboarding.OnboardingScreen
+import com.freecritter.dispatch.ui.settings.SettingsScreen
 import com.freecritter.dispatch.ui.trips.TripDetailScreen
 import com.freecritter.dispatch.ui.trips.TripEditScreen
 import com.freecritter.dispatch.ui.trips.TripListScreen
@@ -19,6 +20,7 @@ object Routes {
     const val TRIPS = "trips"
     const val TRIP_DETAIL = "trip/{tripId}"
     const val TRIP_EDIT = "tripEdit?tripId={tripId}"
+    const val SETTINGS = "settings"
     fun tripDetail(id: String) = "trip/$id"
     fun tripEdit(id: String? = null) = if (id == null) "tripEdit" else "tripEdit?tripId=$id"
     const val COMPONENT_EDIT = "componentEdit/{tripId}?componentId={componentId}"
@@ -48,6 +50,7 @@ fun DispatchNav(
                 repository = repository,
                 onOpenTrip = { id -> nav.navigate(Routes.tripDetail(id)) },
                 onCreateTrip = { nav.navigate(Routes.tripEdit()) },
+                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
             )
         }
         composable(
@@ -92,6 +95,16 @@ fun DispatchNav(
                 tripId = backStackEntry.arguments?.getString("tripId") ?: return@composable,
                 componentId = backStackEntry.arguments?.getString("componentId"),
                 onDone = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                repository = repository,
+                keyManager = keyManager,
+                onIdentityReset = {
+                    nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }
+                },
+                onBack = { nav.popBackStack() },
             )
         }
     }
