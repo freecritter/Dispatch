@@ -6,14 +6,16 @@ junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
-kotlin = "2.2.10"
+kotlin = "2.4.0"
 composeBom = "2026.02.01"
 room = "2.8.1"
-ksp = "2.2.10-2.0.2"
+ksp = "2.3.9"
 workManager = "2.10.1"
 navigationCompose = "2.9.0"
 kotlinxSerialization = "1.8.0"
 securityCrypto = "1.1.0-alpha07"
+quartz = "1.12.6"
+okhttp = "4.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +39,8 @@ androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", ve
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+quartz-android = { group = "com.vitorpamplona.quartz", name = "quartz-android", version.ref = "quartz" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

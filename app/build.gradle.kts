@@ -8,9 +8,7 @@ plugins {
 android {
     namespace = "com.freecritter.dispatch"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
@@ -71,4 +69,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.security.crypto)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
+    implementation(libs.quartz.android)
+    implementation(libs.okhttp)
 }

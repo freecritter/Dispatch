@@ -15,6 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import com.freecritter.dispatch.nostr.DeRiskSlice
+import kotlinx.coroutines.launch
 
 /**
  * Identity onboarding (spec §7.1). Three paths, privacy-by-default copy.
@@ -62,5 +69,13 @@ fun OnboardingScreen(onIdentityReady: () -> Unit) {
             "Tip: for Amber, create a new account just for Dispatch rather than reusing your social identity.",
             style = MaterialTheme.typography.bodySmall
         )
+        Spacer(Modifier.height(24.dp))
+        val scope = rememberCoroutineScope()
+        var sliceStatus by remember { mutableStateOf("") }
+        OutlinedButton(
+            onClick = { scope.launch { DeRiskSlice.run { msg -> sliceStatus = msg } } },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Run de-risk slice (temp)") }
+        Text(sliceStatus, style = MaterialTheme.typography.bodySmall)
     }
 }
