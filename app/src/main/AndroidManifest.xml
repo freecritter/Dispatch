@@ -3,6 +3,17 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- NIP-55: make external signers (Amber) visible to package-manager
+         queries and resolvable for intents/content-resolver calls.
+         Required since Android 11 package visibility filtering; without
+         this, isExternalSignerInstalled() always returns false. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="nostrsigner" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DispatchApp"
         android:allowBackup="false"

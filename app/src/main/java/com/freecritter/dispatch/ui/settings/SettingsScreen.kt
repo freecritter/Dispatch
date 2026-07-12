@@ -34,12 +34,20 @@ import com.freecritter.dispatch.nostr.KeyManager
 import com.freecritter.dispatch.nostr.OutboxWorker
 import com.freecritter.dispatch.nostr.RelayConfig
 import com.freecritter.dispatch.nostr.RestoreService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * Settings & safety (spec §7.13, 0.2 slice): identity visibility, backup status,
- * guarded nsec reveal (show-and-transcribe, NO clipboard button by design),
- * identity reset with honest consequences, relay readout, version.
+ * Settings & safety (spec §7.13): identity visibility, backup status,
+ * guarded nsec reveal with sensitive-flagged copy, identity reset,
+ * relay readout, version.
+ *
+ * Reset semantics (0.3): reset = factory reset of app data. Wipes the
+ * Room DB (trips, components, outbox — everything) AND the key material.
+ * Rationale: leaving local data across a key rotation silently republishes
+ * old-identity data under the new npub on next edit — a structural
+ * cross-identity leak. Reset must mean reset.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +63,7 @@ fun SettingsScreen(
     var showNsecWarning by remember { mutableStateOf(false) }
     var revealedNsec by remember { mutableStateOf<String?>(null) }
     var showResetWarning by remember { mutableStateOf(false) }
+    var resetting by remember { mutableStateOf(false) }
     var restoreStatus by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val db = remember { DispatchDatabase.get(context) }
@@ -93,7 +102,12 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    if (revealedNsec == null) {
+                    if (!keyManager.canRevealNsec()) {
+                        Text(
+                            "Key held by Amber — manage it there.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    } else if (revealedNsec == null) {
                         OutlinedButton(onClick = { showNsecWarning = true }, modifier = Modifier.fillMaxWidth()) {
                             Text("Reveal secret key (nsec)")
                         }
@@ -184,8 +198,12 @@ fun SettingsScreen(
                 Column(Modifier.padding(16.dp)) {
                     Text("Danger zone", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(12.dp))
-                    OutlinedButton(onClick = { showResetWarning = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Reset identity")
+                    OutlinedButton(
+                        onClick = { showResetWarning = true },
+                        enabled = !resetting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (resetting) "Resetting…" else "Reset identity & erase data")
                     }
                 }
             }
@@ -202,7 +220,7 @@ fun SettingsScreen(
             text = {
                 Text(
                     "Anyone who sees this key can read your entire backup history — there is no way to undo exposure. " +
-                        "Write it down somewhere safe; avoid screenshots and the clipboard.",
+                            "Write it down somewhere safe; avoid screenshots and the clipboard.",
                 )
             },
             confirmButton = {
@@ -218,20 +236,28 @@ fun SettingsScreen(
     if (showResetWarning) {
         AlertDialog(
             onDismissRequest = { showResetWarning = false },
-            title = { Text("Reset identity?") },
+            title = { Text("Reset identity & erase data?") },
             text = {
                 Text(
-                    "Your trips stay on this device, but future backups will publish under a NEW key. " +
-                        "Backups made under the current key become unreachable unless you saved its nsec. " +
-                        "This cannot be undone.",
+                    "This erases ALL Dispatch data on this device — trips, components, pending backups — " +
+                            "and forgets your key. Encrypted backups already on the relays stay there: " +
+                            "you can restore them later by importing this key's nsec or logging into the same Amber account. " +
+                            "Without the key, they are unreachable forever. This cannot be undone.",
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    keyManager.wipeIdentity()
                     showResetWarning = false
-                    onIdentityReset()
-                }) { Text("Reset") }
+                    resetting = true
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            db.clearAllTables()
+                        }
+                        keyManager.wipeIdentity()
+                        resetting = false
+                        onIdentityReset()
+                    }
+                }) { Text("Erase & reset") }
             },
             dismissButton = { TextButton(onClick = { showResetWarning = false }) { Text("Cancel") } },
         )
